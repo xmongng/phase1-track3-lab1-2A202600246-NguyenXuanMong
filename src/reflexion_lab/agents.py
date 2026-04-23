@@ -60,7 +60,16 @@ class BaseAgent:
             
         total_tokens = sum(t.token_estimate for t in traces)
         total_latency = sum(t.latency_ms for t in traces)
-        failure_mode = "none" if final_score == 1 else FAILURE_MODE_BY_QID.get(example.qid, "wrong_final_answer")
+        if final_score == 1:
+            failure_mode = "none"
+        else:
+            # Tự động phân loại lỗi dựa trên kết quả của Evaluator
+            if judge.spurious_claims:
+                failure_mode = "entity_drift"
+            elif judge.missing_evidence:
+                failure_mode = "incomplete_multi_hop"
+            else:
+                failure_mode = "wrong_final_answer"
         return RunRecord(qid=example.qid, question=example.question, gold_answer=example.gold_answer, agent_type=self.agent_type, predicted_answer=final_answer, is_correct=bool(final_score), attempts=len(traces), token_estimate=total_tokens, latency_ms=total_latency, failure_mode=failure_mode, reflections=reflections, traces=traces)
 
 class ReActAgent(BaseAgent):
